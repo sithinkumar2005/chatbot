@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>E-Governance Chatbot</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<div class="w-full max-w-md bg-white rounded-xl shadow-lg p-5 space-y-6">
+
+  <!-- HEADER -->
+  <h1 class="text-2xl font-bold text-center">🤖 E-Governance Chatbot</h1>
+
+  <!-- CHAT SCREEN -->
+  <div>
+    <div id="chatBox" class="h-52 border rounded-lg p-3 overflow-y-auto text-sm space-y-2 bg-gray-50"></div>
+
+    <div class="flex mt-2 gap-2">
+      <input id="userInput" type="text"
+        placeholder="Type your message..."
+        class="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <button onclick="sendMessage()"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        Send
+      </button>
+    </div>
+  </div>
+
+  <!-- DOCUMENT UPLOAD -->
+  <div>
+    <h2 class="font-semibold mb-2">📄 Document Upload</h2>
+    <input type="file" id="document" class="w-full border rounded-lg p-2">
+    <button onclick="uploadDocument()"
+      class="mt-2 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+      Upload
+    </button>
+    <p id="uploadStatus" class="text-sm mt-1"></p>
+  </div>
+
+  <!-- COMPLAINT FORM -->
+  <div>
+    <h2 class="font-semibold mb-2">📝 Register Complaint</h2>
+
+    <select id="department" class="w-full border rounded-lg p-2 mb-2">
+      <option>Electricity</option>
+      <option>Water</option>
+      <option>Roads</option>
+      <option>Police</option>
+    </select>
+
+    <input id="issue" type="text" placeholder="Issue type"
+      class="w-full border rounded-lg p-2 mb-2">
+
+    <textarea id="description" placeholder="Describe your problem"
+      class="w-full border rounded-lg p-2 mb-2"></textarea>
+
+    <button onclick="submitComplaint()"
+      class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
+      Submit Complaint
+    </button>
+
+    <p id="complaintStatus" class="text-sm mt-1"></p>
+  </div>
+
+</div>
+
+<!-- JAVASCRIPT -->
+<script>
+  function sendMessage() {
+    const input = document.getElementById("userInput");
+    const chatBox = document.getElementById("chatBox");
+
+    if (!input.value.trim()) return;
+
+    chatBox.innerHTML += `
+      <div class="text-right text-blue-600">You: ${input.value}</div>
+    `;
+
+    setTimeout(() => {
+      chatBox.innerHTML += `
+        <div class="text-left text-green-600">
+          Bot: Thank you! Please upload documents or file a complaint.
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }, 500);
+
+    input.value = "";
+  }
+
+  function uploadDocument() {
+    const file = document.getElementById("document").files[0];
+    const status = document.getElementById("uploadStatus");
+
+    if (!file) {
+      status.textContent = "❌ Please select a document.";
+      status.className = "text-red-600";
+      return;
+    }
+
+    status.textContent = "✅ Document uploaded successfully!";
+    status.className = "text-green-600";
+  }
+
+  function submitComplaint() {
+    const dept = document.getElementById("department").value;
+    const issue = document.getElementById("issue").value;
+    const desc = document.getElementById("description").value;
+    const status = document.getElementById("complaintStatus");
+
+    if (!issue || !desc) {
+      status.textContent = "❌ Please fill all fields.";
+      status.className = "text-red-600";
+      return;
+    }
+
+    status.textContent = `✅ Complaint submitted to ${dept} department.`;
+    status.className = "text-green-600";
+  }
+</script>
+
+</body>
+</html>
