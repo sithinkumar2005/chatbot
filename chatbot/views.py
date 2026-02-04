@@ -101,12 +101,14 @@ def signup_view(request):
             password=password
         )
 
+        # ✅ SAFE create — avoids duplicate error
         DigitalIdentity.objects.get_or_create(user=user)
 
         login(request, user)
         return redirect("/api/")
 
     return render(request, "signup.html")
+
 
 
 
