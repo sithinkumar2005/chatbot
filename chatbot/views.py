@@ -17,13 +17,50 @@ from .ml_engine import predict_priority
 from .nlp import chatbot_response
 
 
-# ================= HOME =================
+# ================= HOME PAGE =================
 @login_required(login_url='/api/login/')
 def home(request):
     digital_identity, _ = DigitalIdentity.objects.get_or_create(
         user=request.user
     )
+
     return render(request, "index.html", {
+        "digital_id": digital_identity.digital_id
+    })
+
+
+# ================= CHAT PAGE (HTML PAGE) =================
+@login_required(login_url='/api/login/')
+def chat_page(request):
+    digital_identity, _ = DigitalIdentity.objects.get_or_create(
+        user=request.user
+    )
+
+    return render(request, "chat.html", {
+        "digital_id": digital_identity.digital_id
+    })
+
+
+# ================= DOCUMENT PAGE =================
+@login_required(login_url='/api/login/')
+def document_page(request):
+    digital_identity, _ = DigitalIdentity.objects.get_or_create(
+        user=request.user
+    )
+
+    return render(request, "documents.html", {
+        "digital_id": digital_identity.digital_id
+    })
+
+
+# ================= COMPLAINT PAGE =================
+@login_required(login_url='/api/login/')
+def complaint_page(request):
+    digital_identity, _ = DigitalIdentity.objects.get_or_create(
+        user=request.user
+    )
+
+    return render(request, "complaint.html", {
         "digital_id": digital_identity.digital_id
     })
 
@@ -31,8 +68,8 @@ def home(request):
 # ================= CHATBOT API =================
 @csrf_exempt
 @api_view(["POST"])
-@authentication_classes([])       
-@permission_classes([AllowAny])    #  Public API
+@authentication_classes([])
+@permission_classes([AllowAny])
 def chat_view(request):
     message = request.data.get("message", "").strip()
 
@@ -43,19 +80,22 @@ def chat_view(request):
     return Response({"reply": reply})
 
 
-# ================= COMPLAINT =================
+# ================= COMPLAINT API =================
 @csrf_exempt
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def register_complaint(request):
-    description = request.data.get("description", "")
+    description = request.data.get("description", "").strip()
+
+    if not description:
+        return Response({"error": "Description required"}, status=400)
 
     priority = predict_priority(description)
 
     Complaint.objects.create(
-        department=request.data.get("department"),
-        issue_type=request.data.get("issue_type"),
+        department=request.data.get("department", ""),
+        issue_type=request.data.get("issue_type", ""),
         description=description,
         priority=priority
     )
@@ -66,7 +106,7 @@ def register_complaint(request):
     })
 
 
-# ================= DOCUMENT UPLOAD =================
+# ================= DOCUMENT UPLOAD API =================
 @csrf_exempt
 @api_view(["POST"])
 @authentication_classes([])
@@ -94,14 +134,13 @@ def signup_view(request):
                 "error": "User already exists"
             })
 
-        # create user
         user = User.objects.create_user(
             username=email,
             email=email,
             password=password
         )
 
-        # ✅ SAFE create — avoids duplicate error
+        # create digital identity safely
         DigitalIdentity.objects.get_or_create(user=user)
 
         login(request, user)
@@ -110,9 +149,7 @@ def signup_view(request):
     return render(request, "signup.html")
 
 
-
-
-
+# ================= LOGIN =================
 def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email")
@@ -131,12 +168,7 @@ def login_view(request):
     return render(request, "login.html")
 
 
-
+# ================= LOGOUT =================
 def logout_view(request):
     logout(request)
-    return redirect('login')
-
-
-@login_required
-def home(request):
-    return render(request, "index.html")
+    return redirect('/api/login/')
