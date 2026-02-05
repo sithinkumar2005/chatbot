@@ -12,6 +12,10 @@ urlpatterns = [
 
     # ---------- API ----------
     path('chat/', views.chat_view, name='chat'),
-    path('complaint/register/', views.register_complaint),
     path('document/upload/', views.upload_document),
+
+    # ---------- complaint ----------
+    path("complaint/", views.complaint_page),
+    path("complaint/register/", views.register_complaint),
+    path("complaint/status/<str:cid>/", views.complaint_status),
 ]

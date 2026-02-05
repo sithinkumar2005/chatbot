@@ -2,22 +2,50 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 
-
 # -----------------------------
 # Complaint Model
 # -----------------------------
+
+
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+
+
 class Complaint(models.Model):
+
+    complaint_id = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
     department = models.CharField(max_length=100)
     issue_type = models.CharField(max_length=100)
     description = models.TextField()
 
-    priority = models.CharField(max_length=10)
-    status = models.CharField(max_length=50, default="Pending")
+    priority = models.CharField(max_length=10, default="Low")
+
+    status = models.CharField(
+        max_length=20,
+        default="Submitted"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"{self.issue_type} - {self.status}"
+    def save(self, *args, **kwargs):
+        if not self.complaint_id:
+            self.complaint_id = "C" + uuid.uuid4().hex[:6].upper()
+        super().save(*args, **kwargs)
+
+
 
 
 # -----------------------------

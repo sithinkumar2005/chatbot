@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complaints</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+
+<!-- CSRF TOKEN FOR DJANGO -->
+<form style="display:none;">
+    {% csrf_token %}
+</form>
+
+<!-- NAVBAR -->
+<nav class="bg-blue-700 text-white p-4 flex justify-between items-center">
+    <div class="font-bold text-lg">E-Gov AI System</div>
+
+    <div class="space-x-4">
+        <a href="/api/" class="hover:underline">Home</a>
+        <a href="/api/chat/" class="hover:underline">Chat</a>
+        <a href="/api/documents/" class="hover:underline">Documents</a>
+        <a href="/api/complaint/" class="underline font-bold">Complaints</a>
+        <a href="/api/logout/" class="hover:underline">Logout</a>
+    </div>
+
+    <div class="text-sm bg-blue-900 px-3 py-1 rounded">
+        Digital ID: {{ digital_id }}
+    </div>
+</nav>
+
+
+<div class="max-w-4xl mx-auto p-6 space-y-8">
+
+    <!-- REGISTER COMPLAINT -->
+    <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-xl font-bold mb-4">Register Complaint</h2>
+
+        <input id="department" placeholder="Department"
+            class="border p-2 w-full mb-3 rounded">
+
+        <input id="issue_type" placeholder="Issue Type"
+            class="border p-2 w-full mb-3 rounded">
+
+        <textarea id="description" placeholder="Describe your issue"
+            class="border p-2 w-full mb-3 rounded"></textarea>
+
+        <button onclick="registerComplaint()"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
+            Submit Complaint
+        </button>
+
+        <div id="register_result" class="mt-4 hidden rounded p-3"></div>
+    </div>
+
+
+    <!-- TRACK COMPLAINT -->
+    <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-xl font-bold mb-4">Track Complaint</h2>
+
+        <input id="cid" placeholder="Complaint ID (ex: C1023)"
+            class="border p-2 w-full mb-3 rounded">
+
+        <button onclick="trackComplaint()"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
+            Check Status
+        </button>
+
+        <div id="status_result" class="mt-4 hidden rounded p-3"></div>
+    </div>
+
+</div>
+
+
+<script>
+function getCSRFToken() {
+    const name = "csrftoken=";
+    const decoded = decodeURIComponent(document.cookie);
+    const cookies = decoded.split(';');
+
+    for (let c of cookies) {
+        c = c.trim();
+        if (c.startsWith(name)) {
+            return c.substring(name.length);
+        }
+    }
+    return "";
+}
+
+
+async function registerComplaint() {
+
+    const dept = document.getElementById("department").value.trim();
+    const issue = document.getElementById("issue_type").value.trim();
+    const desc = document.getElementById("description").value.trim();
+    const resultBox = document.getElementById("register_result");
+
+    if (!dept || !issue || !desc) {
+        resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+        resultBox.classList.remove("hidden");
+        resultBox.innerText = "Please fill all fields";
+        return;
+    }
+
+    resultBox.className = "mt-4 rounded p-3 bg-gray-100";
+    resultBox.classList.remove("hidden");
+    resultBox.innerText = "Submitting...";
+
+    try {
+        const res = await fetch("/api/complaint/register/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken()
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({
+                department: dept,
+                issue_type: issue,
+                description: desc
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            resultBox.className = "mt-4 rounded p-3 bg-green-100 text-green-800";
+            resultBox.innerHTML = `
+                ✅ Complaint Registered<br>
+                Priority: <b>${data.priority}</b><br>
+                Complaint ID: <b>${data.complaint_id}</b>
+            `;
+        } else {
+            resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+            resultBox.innerText = data.error || data.detail || "Submission failed";
+        }
+
+    } catch (err) {
+        resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+        resultBox.innerText = "Server connection failed";
+    }
+}
+
+
+
+async function trackComplaint() {
+
+    let cid = document.getElementById("cid").value.trim();   // ✅ trim fixes your 404
+    const box = document.getElementById("status_result");
+
+    if (!cid) {
+        box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+        box.classList.remove("hidden");
+        box.innerText = "Enter Complaint ID";
+        return;
+    }
+
+    box.className = "mt-4 rounded p-3 bg-gray-100";
+    box.classList.remove("hidden");
+    box.innerText = "Checking...";
+
+    try {
+        const res = await fetch(`/api/complaint/status/${cid}/`, {
+            credentials: "same-origin"
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            box.className = "mt-4 rounded p-3 bg-blue-100 text-blue-800";
+            box.innerHTML = `
+                📌 Status: <b>${data.status}</b><br>
+                Priority: <b>${data.priority}</b><br>
+                Department: ${data.department}
+            `;
+        } else {
+            box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+            box.innerText = data.error || "Complaint not found";
+        }
+
+    } catch (err) {
+        box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+        box.innerText = "Tracking failed — server error";
+    }
+}
+
+</script>
+
+
+</body>
+</html>
