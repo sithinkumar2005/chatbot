@@ -7,7 +7,6 @@
 
 <body class="bg-gray-100 min-h-screen">
 
-<!-- CSRF TOKEN FOR DJANGO -->
 <form style="display:none;">
     {% csrf_token %}
 </form>
@@ -32,7 +31,7 @@
 
 <div class="max-w-4xl mx-auto p-6 space-y-8">
 
-    <!-- REGISTER COMPLAINT -->
+    <!-- REGISTER -->
     <div class="bg-white p-6 rounded shadow">
         <h2 class="text-xl font-bold mb-4">Register Complaint</h2>
 
@@ -45,7 +44,7 @@
         <textarea id="description" placeholder="Describe your issue"
             class="border p-2 w-full mb-3 rounded"></textarea>
 
-        <button onclick="registerComplaint()"
+        <button id="submitBtn" type="button" onclick="registerComplaint()"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
             Submit Complaint
         </button>
@@ -54,14 +53,14 @@
     </div>
 
 
-    <!-- TRACK COMPLAINT -->
+    <!-- TRACK -->
     <div class="bg-white p-6 rounded shadow">
         <h2 class="text-xl font-bold mb-4">Track Complaint</h2>
 
-        <input id="cid" placeholder="Complaint ID (ex: C1023)"
+        <input id="cid" placeholder="Complaint ID"
             class="border p-2 w-full mb-3 rounded">
 
-        <button onclick="trackComplaint()"
+        <button type="button" onclick="trackComplaint()"
             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
             Check Status
         </button>
@@ -69,44 +68,53 @@
         <div id="status_result" class="mt-4 hidden rounded p-3"></div>
     </div>
 
+
+    <!-- DASHBOARD ALERTS -->
+    <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-xl font-bold mb-4">My Complaints</h2>
+        <button onclick="loadMyComplaints()"
+            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded mb-4">
+            Refresh List
+        </button>
+
+        <div id="my_list" class="space-y-2"></div>
+    </div>
+
 </div>
 
 
 <script>
+// ================= CSRF =================
 function getCSRFToken() {
-    const name = "csrftoken=";
-    const decoded = decodeURIComponent(document.cookie);
-    const cookies = decoded.split(';');
-
-    for (let c of cookies) {
-        c = c.trim();
-        if (c.startsWith(name)) {
-            return c.substring(name.length);
-        }
-    }
-    return "";
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : "";
 }
 
 
+// ================= REGISTER =================
 async function registerComplaint() {
 
-    const dept = document.getElementById("department").value.trim();
-    const issue = document.getElementById("issue_type").value.trim();
-    const desc = document.getElementById("description").value.trim();
-    const resultBox = document.getElementById("register_result");
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+
+    const dept = department.value.trim();
+    const issue = issue_type.value.trim();
+    const desc = description.value.trim();
+
+    const box = register_result;
+    box.classList.remove("hidden");
 
     if (!dept || !issue || !desc) {
-        resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-        resultBox.classList.remove("hidden");
-        resultBox.innerText = "Please fill all fields";
+        showError(box, "All fields required");
+        btn.disabled = false;
         return;
     }
 
-    resultBox.className = "mt-4 rounded p-3 bg-gray-100";
-    resultBox.classList.remove("hidden");
-    resultBox.innerText = "Submitting...";
+    box.className = "mt-4 rounded p-3 bg-gray-100";
+    box.innerText = "Submitting...";
 
     try {
+
         const res = await fetch("/api/complaint/register/", {
             method: "POST",
             headers: {
@@ -122,70 +130,111 @@ async function registerComplaint() {
         });
 
         const data = await res.json();
+        console.log("REGISTER RESPONSE:", data);
 
-        if (res.ok) {
-            resultBox.className = "mt-4 rounded p-3 bg-green-100 text-green-800";
-            resultBox.innerHTML = `
-                ✅ Complaint Registered<br>
-                Priority: <b>${data.priority}</b><br>
-                Complaint ID: <b>${data.complaint_id}</b>
-            `;
-        } else {
-            resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-            resultBox.innerText = data.error || data.detail || "Submission failed";
-        }
+        if (!res.ok) throw data;
+
+        box.className = "mt-4 rounded p-3 bg-green-100 text-green-800";
+        box.innerHTML = `
+            ✅ Complaint Registered<br>
+            Priority: <b>${data.priority}</b><br>
+            Complaint ID: <b>${data.complaint_id}</b>
+        `;
+
+        // auto fill track field
+        cid.value = data.complaint_id;
+
+        loadMyComplaints();
 
     } catch (err) {
-        resultBox.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-        resultBox.innerText = "Server connection failed";
+        console.log("REGISTER ERROR:", err);
+        showError(box, err.error || err.detail || "Registration failed");
     }
+
+    btn.disabled = false;
 }
 
 
-
+// ================= TRACK =================
 async function trackComplaint() {
 
-    let cid = document.getElementById("cid").value.trim();   // ✅ trim fixes your 404
-    const box = document.getElementById("status_result");
+    const id = cid.value.trim().toUpperCase();
+    const box = status_result;
+    box.classList.remove("hidden");
 
-    if (!cid) {
-        box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-        box.classList.remove("hidden");
-        box.innerText = "Enter Complaint ID";
+    if (!id) {
+        showError(box, "Enter Complaint ID");
         return;
     }
 
     box.className = "mt-4 rounded p-3 bg-gray-100";
-    box.classList.remove("hidden");
     box.innerText = "Checking...";
 
     try {
-        const res = await fetch(`/api/complaint/status/${cid}/`, {
+
+        const res = await fetch(`/api/complaint/status/${id}/`, {
+            credentials: "same-origin"
+        });
+
+        const data = await res.json();
+        console.log("STATUS RESPONSE:", data);
+
+        if (!res.ok) throw data;
+
+        box.className = "mt-4 rounded p-3 bg-blue-100 text-blue-800";
+        box.innerHTML = `
+            📌 Status: <b>${data.status}</b><br>
+            Priority: <b>${data.priority}</b><br>
+            Department: ${data.department}<br>
+            Issue: ${data.issue_type}
+        `;
+
+    } catch (err) {
+        console.log("STATUS ERROR:", err);
+        showError(box, err.error || "Complaint not found");
+    }
+}
+
+
+// ================= DASHBOARD LIST =================
+async function loadMyComplaints() {
+
+    const list = document.getElementById("my_list");
+    list.innerHTML = "Loading...";
+
+    try {
+        const res = await fetch("/api/complaint/my/", {
             credentials: "same-origin"
         });
 
         const data = await res.json();
 
-        if (res.ok) {
-            box.className = "mt-4 rounded p-3 bg-blue-100 text-blue-800";
-            box.innerHTML = `
-                📌 Status: <b>${data.status}</b><br>
-                Priority: <b>${data.priority}</b><br>
-                Department: ${data.department}
-            `;
-        } else {
-            box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-            box.innerText = data.error || "Complaint not found";
-        }
+        if (!res.ok) throw data;
 
-    } catch (err) {
-        box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
-        box.innerText = "Tracking failed — server error";
+        list.innerHTML = data.map(c => `
+            <div class="border p-3 rounded bg-gray-50">
+                <b>${c.complaint_id}</b> — ${c.department}<br>
+                Status: ${c.status} | Priority: ${c.priority}
+            </div>
+        `).join("");
+
+    } catch {
+        list.innerHTML = "Failed to load";
     }
 }
 
-</script>
 
+// ================= ERROR BOX =================
+function showError(box, msg) {
+    box.className = "mt-4 rounded p-3 bg-red-100 text-red-800";
+    box.innerText = msg;
+}
+
+
+// auto load list on open
+loadMyComplaints();
+
+</script>
 
 </body>
 </html>

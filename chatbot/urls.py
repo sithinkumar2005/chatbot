@@ -18,4 +18,6 @@ urlpatterns = [
     path("complaint/", views.complaint_page),
     path("complaint/register/", views.register_complaint),
     path("complaint/status/<str:cid>/", views.complaint_status),
+    path("complaint/my/", views.my_complaints),
+
 ]
